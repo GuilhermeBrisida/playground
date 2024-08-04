@@ -8,7 +8,8 @@ import "ticktacktoe"
 main :: proc() {
     for {
         fmt.println("What do you want to do now?")
-        fmt.println(" - 1 : Play tick-tack-toe")
+        fmt.println(" - 1 : Play tick-tack-toe (console)")
+        fmt.println(" - 2 : Play tick-tack-toe (gui)")
         fmt.println(" - 0 : Exit")
         jogo := console.read_int()
 
@@ -19,7 +20,7 @@ main :: proc() {
         case 1:
             ticktacktoe.start_game()
         case 2:
-            fmt.println("Nothing here yet :/")
+            ticktacktoe.start_game_gui()
         case:
             fmt.println("Invalid option")
         }

@@ -44,6 +44,7 @@ start_game :: proc() {
         tick_tack_toe_print(game)
     case .O:
         fmt.println("Player O won the game!!!")
+        tick_tack_toe_print(game)
     }
 }
 
