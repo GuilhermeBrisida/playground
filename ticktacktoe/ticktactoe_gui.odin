@@ -6,15 +6,100 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 
+@(private)
+fps_value :: 60
+
+@(private)
 GameInputState :: struct {
     line: int,
-    column: int
+    column: int,
+    burn_pool: int
+}
+
+@(private)
+next_line :: proc(input: ^GameInputState) {
+    if input.line >= 2 {
+        return
+    }
+    if input.burn_pool > 0 {
+        input.burn_pool -= 1
+    } else {
+        input.line += 1
+        input.burn_pool = 4
+    }
+}
+
+@(private)
+previous_line :: proc(input: ^GameInputState) {
+    if input.line <= 0 {
+        return
+    }
+    if input.burn_pool > 0 {
+        input.burn_pool -= 1
+    } else {
+        input.line -= 1
+        input.burn_pool = 4
+    }
+}
+
+@(private)
+previous_column :: proc(input: ^GameInputState) {
+    if input.column <= 0 {
+        return
+    }
+    if input.burn_pool > 0 {
+        input.burn_pool -= 1
+    } else {
+        input.column -= 1
+        input.burn_pool = 4
+    }
+}
+
+@(private)
+next_column :: proc(input: ^GameInputState) {
+    if input.column >= 2 {
+        return
+    }
+    if input.burn_pool > 0 {
+        input.burn_pool -= 1
+    } else {
+        input.column += 1
+        input.burn_pool = 4
+    }
+}
+
+@(private)
+play_move :: proc(game : ^TickTackToe, input: ^GameInputState) {
+    if game.game[input.line][input.column] != CellValue.None {
+        fmt.println("show invalid play message")
+        input.burn_pool = 4
+        return
+    }
+
+    if input.burn_pool > 0 {
+        input.burn_pool -= 1
+    } else {
+        game.game[input.line][input.column] = game.current
+        game.play_counter += 1
+        input.line = 0
+        input.column = 0
+        input.burn_pool = 4
+
+        #partial switch game.current {
+        case .X:
+            game.current = .O
+        case .O:
+            game.current = .X
+        }
+    }
 }
 
 // Starts a new game of tick-tack-toe
 start_game_gui :: proc() {
     raylib.InitWindow(300, 300, "Tick-tack-toe")
+    raylib.SetTargetFPS(fps_value)
 
     // Initializing game state
     game := TickTackToe{ current = CellValue.X }
@@ -27,7 +112,7 @@ start_game_gui :: proc() {
         raylib.ClearBackground(raylib.LIGHTGRAY)
 
         // Then we print the game state
-        tick_tack_toe_input(&input)
+        tick_tack_toe_input(&game, &input)
         tick_tack_toe_draw(&game, &input)
 
         raylib.EndDrawing()
@@ -37,15 +122,17 @@ start_game_gui :: proc() {
 }
 
 // Handle the game input
-tick_tack_toe_input :: proc(input: ^GameInputState) {
+tick_tack_toe_input :: proc(game : ^TickTackToe, input: ^GameInputState) {
     if raylib.IsKeyDown(.LEFT) {
-        fmt.println("go left")
+        previous_column(input)
     } else if raylib.IsKeyDown(.RIGHT) {
-        fmt.println("go right")
+        next_column(input)
     } else if raylib.IsKeyDown(.UP) {
-        fmt.println("go up")
+        previous_line(input)
     } else if raylib.IsKeyDown(.DOWN) {
-        fmt.println("go down")
+        next_line(input)
+    } else if raylib.IsKeyDown(.ENTER) {
+        play_move(game, input)
     }
 }
 
@@ -58,12 +145,12 @@ tick_tack_toe_draw :: proc(game : ^TickTackToe, input: ^GameInputState) {
     case .X:
         raylib.DrawText("Player X won the game!!!", 0, 0, 20, raylib.BLACK)
         raylib.ClearBackground(raylib.GREEN)
-        raylib.DrawText("Y", 150, 150, 40, raylib.RED)
+        raylib.DrawText("X", 150, 150, 40, raylib.BLUE)
         return
     case .O:
         raylib.DrawText("Player O won the game!!!", 0, 0, 20, raylib.BLACK)
         raylib.ClearBackground(raylib.GREEN)
-        raylib.DrawText("O", 150, 150, 40, raylib.RED)
+        raylib.DrawText("O", 150, 150, 40, raylib.BLUE)
         return
     }
 
@@ -74,6 +161,14 @@ tick_tack_toe_draw :: proc(game : ^TickTackToe, input: ^GameInputState) {
     raylib.DrawText("A", 10, 060, 20, raylib.RED)
     raylib.DrawText("B", 10, 110, 20, raylib.RED)
     raylib.DrawText("C", 10, 160, 20, raylib.RED)
+
+    // Print current player
+    #partial switch game.current {
+    case .X:
+        raylib.DrawText("Player: X", 10, 210, 20, raylib.GREEN)
+    case .O:
+        raylib.DrawText("Player: O", 10, 210, 20, raylib.GREEN)
+    }
 
     // Print the grid values
     for i := 0; i < len(game.game); i += 1 {
