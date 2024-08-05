@@ -9,97 +9,15 @@ import "core:strings"
 import "core:time"
 
 @(private)
-fps_value :: 60
-
-@(private)
 GameInputState :: struct {
     line: int,
     column: int,
-    burn_pool: int
-}
-
-@(private)
-next_line :: proc(input: ^GameInputState) {
-    if input.line >= 2 {
-        return
-    }
-    if input.burn_pool > 0 {
-        input.burn_pool -= 1
-    } else {
-        input.line += 1
-        input.burn_pool = 4
-    }
-}
-
-@(private)
-previous_line :: proc(input: ^GameInputState) {
-    if input.line <= 0 {
-        return
-    }
-    if input.burn_pool > 0 {
-        input.burn_pool -= 1
-    } else {
-        input.line -= 1
-        input.burn_pool = 4
-    }
-}
-
-@(private)
-previous_column :: proc(input: ^GameInputState) {
-    if input.column <= 0 {
-        return
-    }
-    if input.burn_pool > 0 {
-        input.burn_pool -= 1
-    } else {
-        input.column -= 1
-        input.burn_pool = 4
-    }
-}
-
-@(private)
-next_column :: proc(input: ^GameInputState) {
-    if input.column >= 2 {
-        return
-    }
-    if input.burn_pool > 0 {
-        input.burn_pool -= 1
-    } else {
-        input.column += 1
-        input.burn_pool = 4
-    }
-}
-
-@(private)
-play_move :: proc(game : ^TickTackToe, input: ^GameInputState) {
-    if game.game[input.line][input.column] != CellValue.None {
-        fmt.println("show invalid play message")
-        input.burn_pool = 4
-        return
-    }
-
-    if input.burn_pool > 0 {
-        input.burn_pool -= 1
-    } else {
-        game.game[input.line][input.column] = game.current
-        game.play_counter += 1
-        input.line = 0
-        input.column = 0
-        input.burn_pool = 4
-
-        #partial switch game.current {
-        case .X:
-            game.current = .O
-        case .O:
-            game.current = .X
-        }
-    }
 }
 
 // Starts a new game of tick-tack-toe
 start_game_gui :: proc() {
     raylib.InitWindow(300, 300, "Tick-tack-toe")
-    raylib.SetTargetFPS(fps_value)
+    raylib.SetTargetFPS(60)
 
     // Initializing game state
     game := TickTackToe{ current = CellValue.X }
@@ -123,16 +41,45 @@ start_game_gui :: proc() {
 
 // Handle the game input
 tick_tack_toe_input :: proc(game : ^TickTackToe, input: ^GameInputState) {
-    if raylib.IsKeyDown(.LEFT) {
-        previous_column(input)
-    } else if raylib.IsKeyDown(.RIGHT) {
-        next_column(input)
-    } else if raylib.IsKeyDown(.UP) {
-        previous_line(input)
-    } else if raylib.IsKeyDown(.DOWN) {
-        next_line(input)
-    } else if raylib.IsKeyDown(.ENTER) {
-        play_move(game, input)
+    #partial switch raylib.GetKeyPressed() {
+    case .LEFT:
+        if input.column > 0 {
+            input.column -= 1
+        }
+    case .RIGHT:
+        if input.column < 2 {
+            input.column += 1
+        }
+    case .UP:
+        if input.line > 0 {
+            input.line -= 1
+        }
+    case .DOWN:
+        if input.line < 3 {
+            input.line += 1
+        }
+    case .ENTER:
+        if game.game[input.line][input.column] != .None {
+            raylib.ClearBackground(raylib.RED)
+            return
+        }
+
+        // Register current move
+        game.game[input.line][input.column] = game.current
+
+        // Change current player
+        if game.current == .X {
+            game.current = .O
+        } else {
+            game.current = .X
+        }
+
+        // Reset coordinates
+        input.line = 0
+        input.column = 0
+
+        // Update play counter
+        game.play_counter += 1
     }
 }
 
