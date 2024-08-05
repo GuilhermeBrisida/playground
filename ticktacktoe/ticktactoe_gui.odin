@@ -15,9 +15,11 @@ GameInputState :: struct {
 }
 
 // Starts a new game of tick-tack-toe
-start_game_gui :: proc() {
-    raylib.InitWindow(300, 300, "Tick-tack-toe")
-    raylib.SetTargetFPS(60)
+start_game_gui :: proc(open_gui: bool = true) {
+    if open_gui {
+        raylib.InitWindow(300, 300, "Tick-tack-toe")
+        raylib.SetTargetFPS(60)
+    }
 
     // Initializing game state
     game := TickTackToe{ current = CellValue.X }
@@ -36,7 +38,9 @@ start_game_gui :: proc() {
         raylib.EndDrawing()
     }
 
-    raylib.CloseWindow()
+    if open_gui{
+        raylib.CloseWindow()
+    }
 }
 
 // Handle the game input
