@@ -32,9 +32,13 @@ start_game_gui :: proc(open_new_window: bool = true) {
     x_texture := raylib.LoadTextureFromImage(x_image)
     o_texture := raylib.LoadTextureFromImage(o_image)
 
-    // Release images
+    // Release image resources
     raylib.UnloadImage(x_image)
     raylib.UnloadImage(o_image)
+
+    // Schedule release textures
+    defer raylib.UnloadTexture(x_texture)
+    defer raylib.UnloadTexture(o_texture)
 
     // Initializing game state
     game := TickTackToe{ current = CellValue.X }
@@ -53,7 +57,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
         raylib.EndDrawing()
     }
 
-    if open_new_window{
+    if open_new_window {
         raylib.CloseWindow()
     }
 }
