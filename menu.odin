@@ -101,4 +101,6 @@ menu_options :: proc(option: MenuOptions) {
     case .TickTackToeGUI:
         ticktacktoe.start_game_gui(false)
     }
+
+    raylib.SetWindowTitle("Game menu")
 }

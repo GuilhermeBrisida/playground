@@ -21,6 +21,8 @@ start_game_gui :: proc(open_new_window: bool = true) {
         // Setting up the system window
         raylib.InitWindow(400, 400, "Tick-tack-toe")
         raylib.SetTargetFPS(60)
+    } else {
+        raylib.SetWindowTitle("Tick-tack-toe")
     }
 
     // Initialize the system textures
