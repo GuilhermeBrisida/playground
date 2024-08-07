@@ -15,11 +15,26 @@ GameInputState :: struct {
 }
 
 // Starts a new game of tick-tack-toe
-start_game_gui :: proc(open_gui: bool = true) {
-    if open_gui {
+start_game_gui :: proc(open_new_window: bool = true) {
+    // Check and open a window if needed
+    if open_new_window {
+        // Setting up the system window
         raylib.InitWindow(300, 300, "Tick-tack-toe")
         raylib.SetTargetFPS(60)
+
+        // Setting up the system fps
+        raylib.SetTargetFPS(60)
     }
+
+    // Initialize the system textures
+    x_image := raylib.LoadImage("./res/x.png")
+    o_image := raylib.LoadImage("./res/o.png")
+    x_texture := raylib.LoadTextureFromImage(x_image)
+    o_texture := raylib.LoadTextureFromImage(o_image)
+
+    // Release images
+    raylib.UnloadImage(x_image)
+    raylib.UnloadImage(o_image)
 
     // Initializing game state
     game := TickTackToe{ current = CellValue.X }
@@ -27,18 +42,18 @@ start_game_gui :: proc(open_gui: bool = true) {
 
     // Game loop
     for !raylib.WindowShouldClose() {
-    // Always start the loop by clearing the screen
+        // Always start the loop by clearing the screen
         raylib.BeginDrawing()
         raylib.ClearBackground(raylib.LIGHTGRAY)
 
         // Then we print the game state
         tick_tack_toe_input(&game, &input)
-        tick_tack_toe_draw(&game, &input)
+        tick_tack_toe_draw(&game, &input, x_texture, o_texture)
 
         raylib.EndDrawing()
     }
 
-    if open_gui{
+    if open_new_window{
         raylib.CloseWindow()
     }
 }
@@ -88,8 +103,14 @@ tick_tack_toe_input :: proc(game : ^TickTackToe, input: ^GameInputState) {
 }
 
 // Print the current game state to the console
-tick_tack_toe_draw :: proc(game : ^TickTackToe, input: ^GameInputState) {
+tick_tack_toe_draw :: proc(game: ^TickTackToe, input: ^GameInputState, x_texture, o_texture: raylib.Texture) {
     tick_tack_toe_check_win(game)
+
+    if game.play_counter >= 9 {
+        raylib.DrawText("The game was a draw", 0, 0, 20, raylib.BLACK)
+        raylib.ClearBackground(raylib.GRAY)
+        return
+    }
 
     // Check if the game finished already
     #partial switch game.winner {
@@ -104,6 +125,7 @@ tick_tack_toe_draw :: proc(game : ^TickTackToe, input: ^GameInputState) {
         raylib.DrawText("O", 150, 150, 40, raylib.BLUE)
         return
     }
+
 
     // Draw the lines / columns indicators
     raylib.DrawText("1", 060, 10, 20, raylib.RED)
@@ -137,12 +159,13 @@ tick_tack_toe_draw :: proc(game : ^TickTackToe, input: ^GameInputState) {
 
             switch line[j] {
             case .X:
-                raylib.DrawText("X", column_offset, line_offset, 20, color)
+                raylib.DrawTexture(x_texture, column_offset - 4, line_offset, raylib.LIGHTGRAY)
             case .O:
-                raylib.DrawText("O", column_offset, line_offset, 20, color)
+                raylib.DrawTexture(o_texture, column_offset - 4, line_offset, raylib.LIGHTGRAY)
             case .None:
                 raylib.DrawText("?", column_offset, line_offset, 20, color)
             }
+            raylib.DrawCircleLines(column_offset + 5, line_offset + 10, 15, color)
         }
     }
 }
