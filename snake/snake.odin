@@ -7,7 +7,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
     // Check and open a window if needed
     if open_new_window {
         // Setting up the system window
-        raylib.InitWindow(300, 300, "Snake")
+        raylib.InitWindow(400, 400, "Snake")
         raylib.SetTargetFPS(60)
     }
 
@@ -17,10 +17,13 @@ start_game_gui :: proc(open_new_window: bool = true) {
         raylib.BeginDrawing()
         raylib.ClearBackground(raylib.BLACK)
 
+        snake_draw()
+
         raylib.EndDrawing()
     }
 }
 
 snake_draw :: proc() {
-    fmt.println("here we should draw stuff")
+    // Start at the center of the screen
+    raylib.DrawCircle(195, 195, 5, raylib.GREEN)
 }

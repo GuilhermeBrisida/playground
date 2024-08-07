@@ -18,7 +18,7 @@ MenuGuiState :: struct {
 }
 
 menu_gui :: proc() {
-    raylib.InitWindow(300, 400, "Game menu")
+    raylib.InitWindow(400, 400, "Game menu")
     raylib.SetTargetFPS(60)
     defer raylib.CloseWindow()
 

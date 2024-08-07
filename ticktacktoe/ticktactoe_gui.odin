@@ -19,7 +19,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
     // Check and open a window if needed
     if open_new_window {
         // Setting up the system window
-        raylib.InitWindow(300, 300, "Tick-tack-toe")
+        raylib.InitWindow(400, 400, "Tick-tack-toe")
         raylib.SetTargetFPS(60)
     }
 
