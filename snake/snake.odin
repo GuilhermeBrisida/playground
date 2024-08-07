@@ -50,7 +50,6 @@ snake_draw :: proc(game_state : ^GameState) {
         raylib.DrawRectangleLines(5, 5 + i32(i * 15), 390, 1, raylib.GRAY)
     }
 
-    // Start at the center of the screen
     raylib.DrawRectangle(8 + (game_state.x * 15), 8 + (game_state.y * 15), 10, 10, raylib.GREEN)
 }
 
