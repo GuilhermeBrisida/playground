@@ -60,6 +60,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
 }
 
 // Handle the game input
+@(private)
 tick_tack_toe_input :: proc(game : ^TickTackToe, input: ^GameInputState) {
     #partial switch raylib.GetKeyPressed() {
     case .LEFT:
@@ -104,6 +105,7 @@ tick_tack_toe_input :: proc(game : ^TickTackToe, input: ^GameInputState) {
 }
 
 // Print the current game state to the console
+@(private)
 tick_tack_toe_draw :: proc(game: ^TickTackToe, input: ^GameInputState, x_texture, o_texture: raylib.Texture) {
     tick_tack_toe_check_win(game)
 
