@@ -10,11 +10,23 @@ game_speed :: 30
 SnakeDirection :: enum { Up, Down, Left, Right }
 
 @(private)
-GameState :: struct {
+Point :: struct {
     x : i32,
     y : i32,
+}
+
+@(private)
+Snake :: struct {
+    head: ^Point,
     direction: SnakeDirection,
+    body: [dynamic]Point,
+}
+
+@(private)
+GameState :: struct {
+    snake: ^Snake,
     count: int,
+    food: [dynamic]Point,
 }
 
 start_game_gui :: proc(open_new_window: bool = true) {
@@ -25,7 +37,16 @@ start_game_gui :: proc(open_new_window: bool = true) {
         raylib.SetTargetFPS(60)
     }
 
-    game_state := GameState{ 0, 0, .Right, game_speed }
+    game_state := GameState{
+        snake = &{
+            head = &{ 0, 0 },
+            direction = .Right,
+            body = [dynamic]Point{},
+        },
+        count = game_speed,
+        // todo: remove the test food
+        food = [dynamic]Point{ { 10, 10}, { 5, 5 } },
+    }
 
     // Game loop
     for !raylib.WindowShouldClose() {
@@ -50,20 +71,28 @@ snake_draw :: proc(game_state : ^GameState) {
         raylib.DrawRectangleLines(5, 5 + i32(i * 15), 390, 1, raylib.GRAY)
     }
 
-    raylib.DrawRectangle(8 + (game_state.x * 15), 8 + (game_state.y * 15), 10, 10, raylib.GREEN)
+    // Draw snake
+    snake_head := game_state.snake.head
+    raylib.DrawRectangle(8 + (snake_head.x * 15), 8 + (snake_head.y * 15), 10, 10, raylib.GREEN)
+
+    // Draw food
+    for i := 0; i < len(game_state.food); i += 1 {
+        food := game_state.food[i]
+        raylib.DrawRectangle(8 + (food.x * 15), 8 + (food.y * 15), 10, 10, raylib.RED)
+    }
 }
 
 @(private)
 handle_input :: proc(game_state : ^GameState) {
     #partial switch raylib.GetKeyPressed() {
     case .LEFT:
-        game_state.direction = .Left
+        game_state.snake.direction = .Left
     case .RIGHT:
-        game_state.direction = .Right
+        game_state.snake.direction = .Right
     case .UP:
-        game_state.direction = .Up
+        game_state.snake.direction = .Up
     case .DOWN:
-        game_state.direction = .Down
+        game_state.snake.direction = .Down
     }
 
     if game_state.count > 0 {
@@ -73,28 +102,30 @@ handle_input :: proc(game_state : ^GameState) {
 
     game_state.count = game_speed
 
-    switch game_state.direction {
+    snake_head := game_state.snake.head
+
+    switch game_state.snake.direction {
     case .Up:
-        if game_state.y > 0 {
-            game_state.y -= 1
+        if snake_head.x > 0 {
+            snake_head.y -= 1
         } else {
             // todo: game over
         }
     case .Down:
-        if game_state.y < 25 {
-            game_state.y += 1
+        if snake_head.y < 25 {
+            snake_head.y += 1
         } else {
             // todo: game over
         }
     case .Left:
-        if game_state.x > 0 {
-            game_state.x -= 1
+        if snake_head.x > 0 {
+            snake_head.x -= 1
         } else {
             // todo: game over
         }
     case .Right:
-        if game_state.x < 25 {
-            game_state.x += 1
+        if snake_head.x < 25 {
+            snake_head.x += 1
         } else {
             // todo: game over
         }
