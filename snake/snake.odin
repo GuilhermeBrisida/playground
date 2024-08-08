@@ -42,6 +42,17 @@ GameState :: struct {
     food: [dynamic]Point,
 }
 
+// todo: draw snake body
+// todo: increase snake movement speed according to snake size
+// todo: check collisions against snake body
+// todo: add points tracker
+// todo: show points on game-over
+// todo: implement persistent high score
+// todo: add special items with effects (shrink potion, slowness potion, etc)
+// todo: add static walls
+// todo: check collistion agains walls
+// todo: implement game-levels?
+
 remove_food :: proc(game_state: ^GameState) {
     // We can't remove food if the game is paused
     if game_state.status == .Paused {
