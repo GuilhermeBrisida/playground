@@ -11,6 +11,9 @@ game_speed :: 30
 grid_size :: 26
 
 @(private)
+max_food_count :: 4
+
+@(private)
 SnakeDirection :: enum { Up, Down, Left, Right }
 
 @(private)
@@ -34,8 +37,33 @@ GameState :: struct {
     status: GamePlayStatus,
     snake: ^Snake,
     frames_until_movement: i32,
-    frames_until_food: i32,
+    frames_until_add_food: i32,
+    frames_until_remove_food: i32,
     food: [dynamic]Point,
+}
+
+remove_food :: proc(game_state: ^GameState) {
+    // We can't remove food if the game is paused
+    if game_state.status == .Paused {
+        return
+    }
+
+    if game_state.frames_until_remove_food > 0 {
+        game_state.frames_until_remove_food -= 1
+        return
+    }
+
+    // Randomize the time until we try to remove food again
+    game_state.frames_until_remove_food = ((rand.int31() % 120) * 4) + 120
+
+    // Check if we can ramove food
+    if len(game_state.food) <= 2 {
+        return
+    }
+
+    // Remove the food
+    remove_food_at := rand.int31() % i32(len(game_state.food) - 1)
+    ordered_remove(&game_state.food, int(remove_food_at))
 }
 
 generate_food :: proc(game_state: ^GameState) {
@@ -44,13 +72,18 @@ generate_food :: proc(game_state: ^GameState) {
         return
     }
 
-    if game_state.frames_until_food > 0 {
-        game_state.frames_until_food -= 1
+    if game_state.frames_until_add_food > 0 {
+        game_state.frames_until_add_food -= 1
+        return
+    }
+
+    // Check if we reached the maximum amount of food allowed
+    if len(game_state.food) >= max_food_count {
         return
     }
 
     // Randomize time until next food
-    game_state.frames_until_food = ((rand.int31() % 120) * 4) + 120
+    game_state.frames_until_add_food = ((rand.int31() % 120) * 4) + 120
 
     did_add_food := false
 
@@ -107,7 +140,8 @@ start_game_gui :: proc(open_new_window: bool = true) {
             body = [dynamic]Point{},
         },
         frames_until_movement = game_speed,
-        frames_until_food = 0,
+        frames_until_add_food = 0,
+        frames_until_remove_food = 0,
         food = [dynamic]Point{},
     }
 
@@ -121,8 +155,9 @@ start_game_gui :: proc(open_new_window: bool = true) {
         raylib.ClearBackground(raylib.BLACK)
 
         handle_input(&game_state)
-        snake_draw(&game_state)
+        remove_food(&game_state)
         generate_food(&game_state)
+        snake_draw(&game_state)
 
         raylib.EndDrawing()
     }
@@ -259,7 +294,7 @@ handle_input :: proc(game_state : ^GameState) {
 
         // If all food is gone, we add more food now
         if len(game_state.food) <= 0 {
-            game_state.frames_until_food = 0
+            game_state.frames_until_add_food = 0
         }
     }
 }
