@@ -108,7 +108,7 @@ handle_input :: proc(game_state : ^GameState) {
 
     switch game_state.snake.direction {
     case .Up:
-        if snake_head.x > 0 {
+        if snake_head.y > 0 {
             snake_head.y -= 1
         } else {
             // todo: game over
@@ -131,5 +131,22 @@ handle_input :: proc(game_state : ^GameState) {
         } else {
             // todo: game over
         }
+    }
+
+    food_to_remove := -1
+
+    // Check if there is food at the snake head
+    for i := 0; i < len(game_state.food); i += 1 {
+        food := game_state.food[i]
+
+        // Mark the food to be removed
+        if food.x == snake_head.x && food.y == snake_head.y {
+            food_to_remove = i
+        }
+    }
+
+    // Remove the food from the list
+    if food_to_remove >= 0 {
+        ordered_remove(&game_state.food, food_to_remove)
     }
 }
