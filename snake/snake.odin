@@ -140,6 +140,17 @@ snake_draw :: proc(game_state : ^GameState) {
         return
     }
 
+    // Draw "Game-Over" page
+    if game_state.status == .Over {
+        raylib.ClearBackground(raylib.RED)
+        raylib.DrawRectangleLines(5, 5, 390, 390, raylib.BLACK)
+        raylib.DrawRectangle(110, 90, 70, 175, raylib.BLACK)
+        raylib.DrawRectangle(220, 90, 70, 175, raylib.BLACK)
+        raylib.DrawText("GAME OVER", 135, 290, 25, raylib.BLACK)
+        raylib.DrawText("Press \"ESC\" to exit", 125, 320, 15, raylib.BLACK)
+        return
+    }
+
     // Drawing game corners
     raylib.DrawRectangleLines(5, 5, 390, 390, raylib.GRAY)
 
@@ -161,6 +172,11 @@ snake_draw :: proc(game_state : ^GameState) {
 
 @(private)
 handle_input :: proc(game_state : ^GameState) {
+    // If the game is over, we don't need to handle input, only the standar "Escape" function
+    if game_state.status == .Over {
+        return
+    }
+
     pressed_key := raylib.GetKeyPressed()
 
     // If the game is paused, we ignore any
@@ -199,25 +215,29 @@ handle_input :: proc(game_state : ^GameState) {
         if snake_head.y > 0 {
             snake_head.y -= 1
         } else {
-            // todo: game over
+            game_state.status = .Over
+            return
         }
     case .Down:
         if snake_head.y < 25 {
             snake_head.y += 1
         } else {
-            // todo: game over
+            game_state.status = .Over
+            return
         }
     case .Left:
         if snake_head.x > 0 {
             snake_head.x -= 1
         } else {
-            // todo: game over
+            game_state.status = .Over
+            return
         }
     case .Right:
         if snake_head.x < 25 {
             snake_head.x += 1
         } else {
-            // todo: game over
+            game_state.status = .Over
+            return
         }
     }
 
