@@ -51,7 +51,6 @@ GameState :: struct {
     food: [dynamic]Point,
 }
 
-// todo: increase snake movement speed according to snake size
 // todo: add points tracker
 // todo: show points on game-over
 // todo: implement persistent high score
@@ -274,7 +273,8 @@ handle_input :: proc(game_state : ^GameState) {
         return
     }
 
-    game_state.frames_until_movement = game_speed
+
+    game_state.frames_until_movement = get_frames_until_movement(game_state)
 
     snake_head := game_state.snake.head
     next_snake_head_x := snake_head.x
@@ -393,4 +393,23 @@ move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
     // Head moves to the next position
     snake_head.x = next_place.x
     snake_head.y = next_place.y
+}
+
+get_frames_until_movement :: proc(game_state: ^GameState) -> i32 {
+    switch len(game_state.snake.body) {
+    case 0..<3:
+        return game_speed
+    case 3..<6:
+        return game_speed - 4
+    case 6..<9:
+        return game_speed - 8
+    case 9..<12:
+        return game_speed - 12
+    case 12..<15:
+        return game_speed - 16
+    case 15..<18:
+        return game_speed - 20
+    case:
+        return game_speed - 24
+    }
 }
