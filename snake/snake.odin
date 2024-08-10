@@ -14,6 +14,11 @@ grid_size :: 26
 max_food_count :: 4
 
 @(private)
+EntityType :: enum {
+    EmptySpace, SnakeBody, Food
+}
+
+@(private)
 SnakeDirection :: enum {
     Up, Down, Left, Right
 }
@@ -47,7 +52,6 @@ GameState :: struct {
 }
 
 // todo: increase snake movement speed according to snake size
-// todo: check collisions against snake body
 // todo: add points tracker
 // todo: show points on game-over
 // todo: implement persistent high score
@@ -313,34 +317,22 @@ handle_input :: proc(game_state : ^GameState) {
 
 @(private)
 check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
-    food_to_remove := -1
     snake_head := game_state.snake.head
 
-    // Check if there is food at the snake head
-    for i := 0; i < len(game_state.food); i += 1 {
-        food := game_state.food[i]
-
-        // Mark the food to be removed
-        if food.x == next_place.x && food.y == next_place.y {
-            food_to_remove = i
-        }
-    }
-
-    // Snake eating food
-    if food_to_remove >= 0 {
-        ordered_remove(&game_state.food, food_to_remove)
+    collision_type, colision_index :=  check_entity_collision(game_state, next_place)
+    switch collision_type {
+    case .Food:
+        ordered_remove(&game_state.food, colision_index)
 
         // Current head of the snake becomes part of the body
         if len(game_state.snake.body) == 0 {
             append(&game_state.snake.body, Point{ snake_head.x, snake_head.y })
-
             // Head moves to the next position
             snake_head.x = next_place.x
             snake_head.y = next_place.y
         } else {
             // Add placeholder piece to the snake body
             append(&game_state.snake.body, Point{ 0, 0 })
-
             move_snake_body_forward(game_state, next_place)
         }
 
@@ -348,9 +340,35 @@ check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
         if len(game_state.food) <= 0 {
             game_state.frames_until_add_food = 0
         }
-    } else {
+    case .SnakeBody:
+        // Collision agains snake body causes a game-over
+        game_state.status = .Over
+    case .EmptySpace:
         move_snake_body_forward(game_state, next_place)
     }
+}
+
+check_entity_collision :: proc(game_state: ^GameState, next_place: Point) -> (EntityType, int) {
+    // Check collision agains snake body
+    for i := 0; i < len(game_state.snake.body); i += 1 {
+        snake_body := game_state.snake.body[i]
+
+        if snake_body.x == next_place.x && snake_body.y == next_place.y {
+            return .SnakeBody, i
+        }
+    }
+
+    // Check collision agains food
+    for i := 0; i < len(game_state.food); i += 1 {
+        food := game_state.food[i]
+
+        // Mark the food to be removed
+        if food.x == next_place.x && food.y == next_place.y {
+            return .Food, i
+        }
+    }
+
+    return .EmptySpace, 0
 }
 
 move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
