@@ -1,8 +1,13 @@
 package snake
 
 import "core:fmt"
+import "core:strings"
 import "core:math/rand"
 import "vendor:raylib"
+import "../gui"
+
+@(private)
+food_score_value :: 1
 
 @(private)
 game_speed :: 30
@@ -49,6 +54,7 @@ GameState :: struct {
     frames_until_add_food: i32,
     frames_until_remove_food: i32,
     food: [dynamic]Point,
+    score: i32,
 }
 
 // todo: add points tracker
@@ -143,8 +149,8 @@ start_game_gui :: proc(open_new_window: bool = true) {
     // Check and open a window if needed
     if open_new_window {
         // Setting up the system window
-        raylib.InitWindow(400, 400, "Snake")
-        raylib.SetTargetFPS(60)
+        raylib.InitWindow(gui.get_window_width(), gui.get_window_height(), "Snake")
+        raylib.SetTargetFPS(gui.get_target_fps())
     } else {
         raylib.SetWindowTitle("Snake")
     }
@@ -160,6 +166,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
         frames_until_add_food = 0,
         frames_until_remove_food = 0,
         food = [dynamic]Point{ },
+        score = 0,
     }
 
     // Add starter food to the game
@@ -174,14 +181,14 @@ start_game_gui :: proc(open_new_window: bool = true) {
         handle_input(&game_state)
         remove_food(&game_state)
         generate_food(&game_state)
-        snake_draw(&game_state)
+        draw_snake_game(&game_state)
 
         raylib.EndDrawing()
     }
 }
 
 @(private)
-snake_draw :: proc(game_state : ^GameState) {
+draw_snake_game :: proc(game_state : ^GameState) {
     // Draw "Pause" indicator
     if game_state.status == .Paused {
         raylib.DrawRectangleLines(5, 5, 390, 390, raylib.GREEN)
@@ -202,6 +209,9 @@ snake_draw :: proc(game_state : ^GameState) {
         raylib.DrawText("Press \"ESC\" to exit", 125, 320, 15, raylib.BLACK)
         return
     }
+
+    // Draw game score
+    raylib.DrawText(strings.clone_to_cstring(fmt.aprintf("SCORE: %d", game_state.score)), 5, 405, 15, raylib.GRAY)
 
     // Drawing game corners
     raylib.DrawRectangleLines(5, 5, 390, 390, raylib.GRAY)
@@ -322,6 +332,7 @@ check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
     collision_type, colision_index :=  check_entity_collision(game_state, next_place)
     switch collision_type {
     case .Food:
+        game_state.score += food_score_value
         ordered_remove(&game_state.food, colision_index)
 
         // Current head of the snake becomes part of the body
