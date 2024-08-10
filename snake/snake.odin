@@ -14,10 +14,14 @@ grid_size :: 26
 max_food_count :: 4
 
 @(private)
-SnakeDirection :: enum { Up, Down, Left, Right }
+SnakeDirection :: enum {
+    Up, Down, Left, Right
+}
 
 @(private)
-GamePlayStatus :: enum { Running, Paused, Over }
+GamePlayStatus :: enum {
+    Running, Paused, Over
+}
 
 @(private)
 Point :: struct {
@@ -42,7 +46,6 @@ GameState :: struct {
     food: [dynamic]Point,
 }
 
-// todo: draw snake body
 // todo: increase snake movement speed according to snake size
 // todo: check collisions against snake body
 // todo: add points tracker
@@ -65,7 +68,7 @@ remove_food :: proc(game_state: ^GameState) {
     }
 
     // Randomize the time until we try to remove food again
-    game_state.frames_until_remove_food = ((rand.int31() % 120) * 4) + 120
+    game_state.frames_until_remove_food = ((rand.int31() % 200) * 4) + 360
 
     // Check if we can ramove food
     if len(game_state.food) <= 2 {
@@ -148,12 +151,12 @@ start_game_gui :: proc(open_new_window: bool = true) {
         snake = &{
             head = &{ 0, 0 },
             direction = .Right,
-            body = [dynamic]Point{},
+            body = [dynamic]Point{ },
         },
         frames_until_movement = game_speed,
         frames_until_add_food = 0,
         frames_until_remove_food = 0,
-        food = [dynamic]Point{},
+        food = [dynamic]Point{ },
     }
 
     // Add starter food to the game
@@ -205,9 +208,15 @@ snake_draw :: proc(game_state : ^GameState) {
         raylib.DrawRectangleLines(5, 5 + i32(i * 15), 390, 1, raylib.GRAY)
     }
 
-    // Draw snake
+    // Draw snake head
     snake_head := game_state.snake.head
     raylib.DrawRectangle(8 + (snake_head.x * 15), 8 + (snake_head.y * 15), 10, 10, raylib.GREEN)
+
+    // Draw snake body
+    for i := len(game_state.snake.body) -1; i >= 0; i -= 1 {
+        snake_body_point := game_state.snake.body[i]
+        raylib.DrawRectangle(8 + (snake_body_point.x * 15), 8 + (snake_body_point.y * 15), 10, 10, raylib.GREEN)
+    }
 
     // Draw food
     for i := 0; i < len(game_state.food); i += 1 {
@@ -238,13 +247,22 @@ handle_input :: proc(game_state : ^GameState) {
 
     #partial switch pressed_key {
     case .LEFT:
-        game_state.snake.direction = .Left
+        if game_state.snake.direction != .Right {
+            game_state.snake.direction = .Left
+        }
+
     case .RIGHT:
-        game_state.snake.direction = .Right
+        if game_state.snake.direction != .Left {
+            game_state.snake.direction = .Right
+        }
     case .UP:
-        game_state.snake.direction = .Up
+        if game_state.snake.direction != .Down {
+            game_state.snake.direction = .Up
+        }
     case .DOWN:
-        game_state.snake.direction = .Down
+        if game_state.snake.direction != .Up {
+            game_state.snake.direction = .Down
+        }
     }
 
     if game_state.frames_until_movement > 0 {
@@ -255,57 +273,106 @@ handle_input :: proc(game_state : ^GameState) {
     game_state.frames_until_movement = game_speed
 
     snake_head := game_state.snake.head
+    next_snake_head_x := snake_head.x
+    next_snake_head_y := snake_head.y
 
     switch game_state.snake.direction {
     case .Up:
-        if snake_head.y > 0 {
-            snake_head.y -= 1
+        if next_snake_head_y > 0 {
+            next_snake_head_y -= 1
         } else {
             game_state.status = .Over
             return
         }
     case .Down:
-        if snake_head.y < 25 {
-            snake_head.y += 1
+        if next_snake_head_y < 25 {
+            next_snake_head_y += 1
         } else {
             game_state.status = .Over
             return
         }
     case .Left:
-        if snake_head.x > 0 {
-            snake_head.x -= 1
+        if next_snake_head_x > 0 {
+            next_snake_head_x -= 1
         } else {
             game_state.status = .Over
             return
         }
     case .Right:
-        if snake_head.x < 25 {
-            snake_head.x += 1
+        if next_snake_head_x < 25 {
+            next_snake_head_x += 1
         } else {
             game_state.status = .Over
             return
         }
     }
 
+    next_snake_head := Point { next_snake_head_x , next_snake_head_y }
+    check_snake_move(game_state, next_snake_head)
+}
+
+@(private)
+check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
     food_to_remove := -1
+    snake_head := game_state.snake.head
 
     // Check if there is food at the snake head
     for i := 0; i < len(game_state.food); i += 1 {
         food := game_state.food[i]
 
         // Mark the food to be removed
-        if food.x == snake_head.x && food.y == snake_head.y {
+        if food.x == next_place.x && food.y == next_place.y {
             food_to_remove = i
         }
     }
 
-    // Remove the food from the list
+    // Snake eating food
     if food_to_remove >= 0 {
         ordered_remove(&game_state.food, food_to_remove)
+
+        // Current head of the snake becomes part of the body
+        if len(game_state.snake.body) == 0 {
+            append(&game_state.snake.body, Point{ snake_head.x, snake_head.y })
+
+            // Head moves to the next position
+            snake_head.x = next_place.x
+            snake_head.y = next_place.y
+        } else {
+            // Add placeholder piece to the snake body
+            append(&game_state.snake.body, Point{ 0, 0 })
+
+            move_snake_body_forward(game_state, next_place)
+        }
 
         // If all food is gone, we add more food now
         if len(game_state.food) <= 0 {
             game_state.frames_until_add_food = 0
         }
+    } else {
+        move_snake_body_forward(game_state, next_place)
     }
+}
+
+move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
+    snake_head := game_state.snake.head
+
+    next_x := snake_head.x
+    next_y := snake_head.y
+
+    // Move snake body forward
+    for i := 0; i < len(game_state.snake.body); i += 1 {
+        current_body_part := &game_state.snake.body[i]
+        current_body_x := current_body_part.x
+        current_body_y := current_body_part.y
+
+        current_body_part.x = next_x
+        current_body_part.y = next_y
+
+        next_x = current_body_x
+        next_y = current_body_y
+    }
+
+    // Head moves to the next position
+    snake_head.x = next_place.x
+    snake_head.y = next_place.y
 }
