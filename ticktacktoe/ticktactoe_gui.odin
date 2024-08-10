@@ -7,6 +7,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "../gui"
 
 @(private)
 GameInputState :: struct {
@@ -19,8 +20,8 @@ start_game_gui :: proc(open_new_window: bool = true) {
     // Check and open a window if needed
     if open_new_window {
         // Setting up the system window
-        raylib.InitWindow(400, 400, "Tick-tack-toe")
-        raylib.SetTargetFPS(60)
+        raylib.InitWindow(gui.get_window_width(), gui.get_window_height(), "Tick-tack-toe")
+        raylib.SetTargetFPS(gui.get_target_fps())
     } else {
         raylib.SetWindowTitle("Tick-tack-toe")
     }

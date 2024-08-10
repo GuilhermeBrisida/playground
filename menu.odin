@@ -5,6 +5,7 @@ import "core:fmt"
 import "vendor:raylib"
 import "ticktacktoe"
 import "snake"
+import "gui"
 import console "utilities"
 
 MenuOptions :: enum {
@@ -18,8 +19,8 @@ MenuGuiState :: struct {
 }
 
 menu_gui :: proc() {
-    raylib.InitWindow(400, 400, "Game menu")
-    raylib.SetTargetFPS(60)
+    raylib.InitWindow(gui.get_window_width(), gui.get_window_height(), "Game menu")
+    raylib.SetTargetFPS(gui.get_target_fps())
     defer raylib.CloseWindow()
 
     menu_state := MenuGuiState{ current = .TickTackToeGUI }
