@@ -57,8 +57,6 @@ GameState :: struct {
     score: i32,
 }
 
-// todo: add points tracker
-// todo: show points on game-over
 // todo: implement persistent high score
 // todo: add special items with effects (shrink potion, slowness potion, etc)
 // todo: add static walls
@@ -194,8 +192,9 @@ draw_snake_game :: proc(game_state : ^GameState) {
         raylib.DrawRectangleLines(5, 5, 390, 390, raylib.GREEN)
         raylib.DrawRectangle(110, 90, 70, 175, raylib.GREEN)
         raylib.DrawRectangle(220, 90, 70, 175, raylib.GREEN)
-        raylib.DrawText("Game Paused", 135, 290, 20, raylib.GREEN)
-        raylib.DrawText("Press \"P\" to Resume", 125, 320, 15, raylib.GREEN)
+        raylib.DrawText("Game Paused", 125, 290, 20, raylib.GREEN)
+        raylib.DrawText(strings.clone_to_cstring(fmt.aprintf("Score: %d", game_state.score)), 125, 315, 15, raylib.GREEN)
+        raylib.DrawText("Press \"P\" to Resume", 125, 335, 15, raylib.GREEN)
         return
     }
 
@@ -205,8 +204,9 @@ draw_snake_game :: proc(game_state : ^GameState) {
         raylib.DrawRectangleLines(5, 5, 390, 390, raylib.BLACK)
         raylib.DrawRectangle(110, 90, 70, 175, raylib.BLACK)
         raylib.DrawRectangle(220, 90, 70, 175, raylib.BLACK)
-        raylib.DrawText("GAME OVER", 135, 290, 25, raylib.BLACK)
-        raylib.DrawText("Press \"ESC\" to exit", 125, 320, 15, raylib.BLACK)
+        raylib.DrawText("GAME OVER", 125, 290, 25, raylib.BLACK)
+        raylib.DrawText(strings.clone_to_cstring(fmt.aprintf("Final score: %d", game_state.score)), 125, 320, 15, raylib.BLACK)
+        raylib.DrawText("Press \"ESC\" to exit", 125, 340, 15, raylib.BLACK)
         return
     }
 
