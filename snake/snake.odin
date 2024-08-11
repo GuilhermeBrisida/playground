@@ -1,8 +1,10 @@
 package snake
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:math/rand"
+import "core:encoding/json"
 import "vendor:raylib"
 import "../gui"
 
@@ -57,12 +59,61 @@ GameState :: struct {
     score: i32,
 }
 
-// todo: implement persistent high score
+@(private)
+SnakeGameInfo :: struct {
+    high_score: i32 `json:"high_score"`,
+}
+
 // todo: add special items with effects (shrink potion, slowness potion, etc)
 // todo: add static walls
 // todo: check collistion agains walls
 // todo: implement game-levels?
 
+start_game_gui :: proc(open_new_window: bool = true) {
+    // Check and open a window if needed
+    if open_new_window {
+        // Setting up the system window
+        raylib.InitWindow(gui.get_window_width(), gui.get_window_height(), "Snake")
+        raylib.SetTargetFPS(gui.get_target_fps())
+    } else {
+        raylib.SetWindowTitle("Snake")
+    }
+
+    game_state := GameState{
+        status = .Running,
+        snake = &{
+            head = &{ 0, 0 },
+            direction = .Right,
+            body = [dynamic]Point{ },
+        },
+        frames_until_movement = game_speed,
+        frames_until_add_food = 0,
+        frames_until_remove_food = 0,
+        food = [dynamic]Point{ },
+        score = 0,
+    }
+
+    // Add starter food to the game
+    generate_food(&game_state)
+
+    // Game loop
+    for !raylib.WindowShouldClose() {
+        // Always start the loop by clearing the screen
+        raylib.BeginDrawing()
+        raylib.ClearBackground(raylib.BLACK)
+
+        handle_input(&game_state)
+        remove_food(&game_state)
+        generate_food(&game_state)
+        draw_snake_game(&game_state)
+
+        raylib.EndDrawing()
+    }
+
+    save_snake_game_info(&game_state)
+}
+
+@(private)
 remove_food :: proc(game_state: ^GameState) {
     // We can't remove food if the game is paused
     if game_state.status == .Paused {
@@ -87,6 +138,7 @@ remove_food :: proc(game_state: ^GameState) {
     ordered_remove(&game_state.food, int(remove_food_at))
 }
 
+@(private)
 generate_food :: proc(game_state: ^GameState) {
     // We can't generate food if the game is paused
     if game_state.status == .Paused {
@@ -143,48 +195,6 @@ generate_food :: proc(game_state: ^GameState) {
     }
 }
 
-start_game_gui :: proc(open_new_window: bool = true) {
-    // Check and open a window if needed
-    if open_new_window {
-        // Setting up the system window
-        raylib.InitWindow(gui.get_window_width(), gui.get_window_height(), "Snake")
-        raylib.SetTargetFPS(gui.get_target_fps())
-    } else {
-        raylib.SetWindowTitle("Snake")
-    }
-
-    game_state := GameState{
-        status = .Running,
-        snake = &{
-            head = &{ 0, 0 },
-            direction = .Right,
-            body = [dynamic]Point{ },
-        },
-        frames_until_movement = game_speed,
-        frames_until_add_food = 0,
-        frames_until_remove_food = 0,
-        food = [dynamic]Point{ },
-        score = 0,
-    }
-
-    // Add starter food to the game
-    generate_food(&game_state)
-
-    // Game loop
-    for !raylib.WindowShouldClose() {
-        // Always start the loop by clearing the screen
-        raylib.BeginDrawing()
-        raylib.ClearBackground(raylib.BLACK)
-
-        handle_input(&game_state)
-        remove_food(&game_state)
-        generate_food(&game_state)
-        draw_snake_game(&game_state)
-
-        raylib.EndDrawing()
-    }
-}
-
 @(private)
 draw_snake_game :: proc(game_state : ^GameState) {
     // Draw "Pause" indicator
@@ -226,7 +236,7 @@ draw_snake_game :: proc(game_state : ^GameState) {
     raylib.DrawRectangle(8 + (snake_head.x * 15), 8 + (snake_head.y * 15), 10, 10, raylib.GREEN)
 
     // Draw snake body
-    for i := len(game_state.snake.body) -1; i >= 0; i -= 1 {
+    for i := len(game_state.snake.body) - 1; i >= 0; i -= 1 {
         snake_body_point := game_state.snake.body[i]
         raylib.DrawRectangle(8 + (snake_body_point.x * 15), 8 + (snake_body_point.y * 15), 10, 10, raylib.GREEN)
     }
@@ -329,7 +339,7 @@ handle_input :: proc(game_state : ^GameState) {
 check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
     snake_head := game_state.snake.head
 
-    collision_type, colision_index :=  check_entity_collision(game_state, next_place)
+    collision_type, colision_index := check_entity_collision(game_state, next_place)
     switch collision_type {
     case .Food:
         game_state.score += food_score_value
@@ -359,6 +369,7 @@ check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
     }
 }
 
+@(private)
 check_entity_collision :: proc(game_state: ^GameState, next_place: Point) -> (EntityType, int) {
     // Check collision agains snake body
     for i := 0; i < len(game_state.snake.body); i += 1 {
@@ -382,6 +393,7 @@ check_entity_collision :: proc(game_state: ^GameState, next_place: Point) -> (En
     return .EmptySpace, 0
 }
 
+@(private)
 move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
     snake_head := game_state.snake.head
 
@@ -406,21 +418,89 @@ move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
     snake_head.y = next_place.y
 }
 
+@(private)
 get_frames_until_movement :: proc(game_state: ^GameState) -> i32 {
     switch len(game_state.snake.body) {
-    case 0..<3:
+    case 0 ..< 3:
         return game_speed
-    case 3..<6:
+    case 3 ..< 6:
         return game_speed - 4
-    case 6..<9:
+    case 6 ..< 9:
         return game_speed - 8
-    case 9..<12:
+    case 9 ..< 12:
         return game_speed - 12
-    case 12..<15:
+    case 12 ..< 15:
         return game_speed - 16
-    case 15..<18:
+    case 15 ..< 18:
         return game_speed - 20
     case:
         return game_speed - 24
+    }
+}
+
+@(private)
+save_snake_game_info :: proc(game_state: ^GameState) {
+    fmt.println("save snake game info")
+
+    // Check if runtime directory exists
+    if !os.exists("./runtime") {
+        dir_err := os.make_directory("./runtime")
+        if dir_err != 0 {
+            fmt.printfln("could not create dir, code: %d", dir_err)
+            return
+        }
+    }
+
+    // Open snake info file
+    file_handle, file_err := os.open("./runtime/snake.json", os.O_CREATE | os.O_RDWR)
+    if file_err != 0 {
+        fmt.printfln("could not open the file, code: %d", file_err)
+        return
+    }
+    defer os.close(file_handle)
+
+    // Read entire data from file
+    bytes, read_err := os.read_entire_file(file_handle, context.allocator)
+    if !read_err {
+        fmt.printfln("could not read the file, code: %d", read_err)
+        return
+    }
+    defer delete(bytes, context.allocator)
+
+    game_info := SnakeGameInfo { 0 }
+
+    // Decode previous game state
+    if len(bytes) > 0 {
+        unmarshal_err := json.unmarshal(bytes, &game_info)
+        if unmarshal_err != nil {
+            fmt.println("error unmarshaling data: ", unmarshal_err)
+            return
+        }
+    }
+
+    // Check if we need to update the high score
+    if game_state.score > game_info.high_score {
+        game_info.high_score = game_state.score
+    }
+
+    // Encode game info as json
+    json_bytes, json_err := json.marshal(game_info, { }, context.allocator)
+    if json_err != nil {
+        fmt.printfln("error marshaling game info: %d", json_err)
+        return
+    }
+
+    // Write the new encoded game data to the file
+    write_len, write_err := os.write_at(file_handle, json_bytes, 0)
+    if write_err != 0 {
+        fmt.printfln("error writin game info to file: %d", write_err)
+        return
+    }
+
+    // Truncate any potential old/stale content from the file
+    truncate_err := os.ftruncate(file_handle, i64(write_len))
+    if write_err != 0 {
+        fmt.printfln("error trucating file: %d", truncate_err)
+        return
     }
 }
