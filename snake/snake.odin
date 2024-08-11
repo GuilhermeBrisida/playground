@@ -261,8 +261,6 @@ handle_special_item :: proc(game_state: ^GameState) {
 
         did_add_special = true
     }
-
-    fmt.printfln("generate_special_item = ( (%d, %d), %d)", game_state.effect.position.x, game_state.effect.position.y, game_state.effect.special_item)
 }
 
 @(private)
