@@ -22,7 +22,22 @@ max_food_count :: 4
 
 @(private)
 EntityType :: enum {
-    EmptySpace, SnakeBody, Food
+    EmptySpace,
+    SnakeBody,
+    Food,
+    SpecialItem,
+}
+
+@(private)
+SpecialItemType :: enum {
+    // No special effect applied
+    None,
+    // Snake moves at base speed
+    SlowerSnake,
+    // Snake moves at max speed
+    FasterSnake,
+    // Food gives two points, no size increase
+    EficientSnake,
 }
 
 @(private)
@@ -49,6 +64,14 @@ Snake :: struct {
 }
 
 @(private)
+SpecialEffect :: struct {
+    special_item: SpecialItemType,
+    remaining_duration: i32,
+    position: ^Point,
+    applied: bool,
+}
+
+@(private)
 GameState :: struct {
     status: GamePlayStatus,
     snake: ^Snake,
@@ -57,6 +80,8 @@ GameState :: struct {
     frames_until_remove_food: i32,
     food: [dynamic]Point,
     score: i32,
+    frames_until_add_special: i32,
+    effect: ^SpecialEffect,
 }
 
 @(private)
@@ -64,7 +89,6 @@ SnakeGameInfo :: struct {
     high_score: i32 `json:"high_score"`,
 }
 
-// todo: add special items with effects (shrink potion, slowness potion, etc)
 // todo: add static walls
 // todo: check collistion agains walls
 // todo: implement game-levels?
@@ -91,6 +115,8 @@ start_game_gui :: proc(open_new_window: bool = true) {
         frames_until_remove_food = 0,
         food = [dynamic]Point{ },
         score = 0,
+        frames_until_add_special = 120,
+        effect = nil,
     }
 
     // Add starter food to the game
@@ -105,6 +131,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
         handle_input(&game_state)
         remove_food(&game_state)
         generate_food(&game_state)
+        handle_special_item(&game_state)
         draw_snake_game(&game_state)
 
         raylib.EndDrawing()
@@ -165,34 +192,78 @@ generate_food :: proc(game_state: ^GameState) {
         rand_x := rand.int31() % grid_size
         rand_y := rand.int31() % grid_size
 
-        // Can't add food to the snake head
-        if game_state.snake.head.x == rand_x && game_state.snake.head.y == rand_y {
+        // Check if we can add food to the generated position
+        collision_type, colision_index := check_entity_collision(game_state, { rand_x, rand_y })
+        if collision_type != EntityType.EmptySpace {
             continue food_loop
-        }
-
-        // Can't add food to the snake body
-        for i := 0; i < len(game_state.snake.body); i += 1 {
-            snake_point := game_state.snake.body[i]
-
-            if snake_point.x == rand_x && snake_point.y == rand_y {
-                continue food_loop
-            }
-        }
-
-        // Can't add food to already existing food
-        for i := 0; i < len(game_state.food); i += 1 {
-            food := game_state.food[i]
-
-            // Can't add food to this position
-            if food.x == rand_x && food.y == rand_y {
-                continue food_loop
-            }
         }
 
         // Add food to the grid
         append(&game_state.food, Point{ rand_x, rand_y })
         did_add_food = true
     }
+}
+
+@(private)
+handle_special_item :: proc(game_state: ^GameState) {
+    // We can't generate food if the game is paused
+    if game_state.status == .Paused {
+        return
+    }
+
+    // Check if we already have a special
+    if game_state.effect != nil {
+        if game_state.effect.applied {
+            if game_state.effect.remaining_duration > 0 {
+                game_state.effect.remaining_duration -= 1
+                return
+            }
+
+            // Remove item effect
+            free(game_state.effect)
+            game_state.effect = nil
+        }
+        return
+    }
+
+    if game_state.frames_until_add_special > 0 {
+        game_state.frames_until_add_special -= 1
+        return
+    }
+
+    // Randomize time until next special is generated
+    // game_state.frames_until_add_special = ((rand.int31() % 200) * 8) + 1200
+    game_state.frames_until_add_special = 60
+
+    did_add_special := false
+
+    // Keep trying to add food until it succeds
+    add_special_loop : for !did_add_special {
+        rand_x := rand.int31() % grid_size
+        rand_y := rand.int31() % grid_size
+
+        // Check if we can add special item to the generated position
+        collision_type, colision_index := check_entity_collision(game_state, { rand_x, rand_y })
+        if collision_type != EntityType.EmptySpace {
+            continue add_special_loop
+        }
+
+        effect := new(SpecialEffect)
+        point := new(Point)
+        point.x = rand_x
+        point.y = rand_y
+        generated_special := rand.int31() % 3
+        effect.special_item = SpecialItemType(generated_special + 1)
+        effect.remaining_duration = 1800
+        effect.position = point
+
+        // Add special
+        game_state.effect = effect
+
+        did_add_special = true
+    }
+
+    fmt.printfln("generate_special_item = ( (%d, %d), %d)", game_state.effect.position.x, game_state.effect.position.y, game_state.effect.special_item)
 }
 
 @(private)
@@ -245,6 +316,11 @@ draw_snake_game :: proc(game_state : ^GameState) {
     for i := 0; i < len(game_state.food); i += 1 {
         food := game_state.food[i]
         raylib.DrawRectangle(8 + (food.x * 15), 8 + (food.y * 15), 10, 10, raylib.RED)
+    }
+
+    // Draw game special item
+    if game_state.effect != nil && !game_state.effect.applied {
+        raylib.DrawRectangle(8 + (game_state.effect.position.x * 15), 8 + (game_state.effect.position.y * 15), 10, 10, raylib.BLUE)
     }
 }
 
@@ -341,19 +417,37 @@ check_snake_move :: proc(game_state : ^GameState, next_place : Point) {
 
     collision_type, colision_index := check_entity_collision(game_state, next_place)
     switch collision_type {
+    case .SpecialItem:
+        if game_state.effect != nil {
+            game_state.effect.applied = true
+        }
+        move_snake_body_forward(game_state, next_place)
     case .Food:
         game_state.score += food_score_value
+        apply_effect := game_state.effect != nil && game_state.effect.applied && game_state.effect.special_item == .EficientSnake
+
+        // Check if we we should give extra points
+        if apply_effect {
+            game_state.score += food_score_value * 3
+        }
+
         ordered_remove(&game_state.food, colision_index)
 
-        // Current head of the snake becomes part of the body
         if len(game_state.snake.body) == 0 {
-            append(&game_state.snake.body, Point{ snake_head.x, snake_head.y })
+            // Check if the special effect that avoid increasing snake size is applied
+            if !apply_effect {
+                // Current head of the snake becomes part of the body
+                append(&game_state.snake.body, Point{ snake_head.x, snake_head.y })
+            }
             // Head moves to the next position
             snake_head.x = next_place.x
             snake_head.y = next_place.y
         } else {
-            // Add placeholder piece to the snake body
-            append(&game_state.snake.body, Point{ 0, 0 })
+            // Check if the special effect that avoid increasing snake size is applied
+            if !apply_effect {
+                // Add placeholder piece to the snake body
+                append(&game_state.snake.body, Point{ 0, 0 })
+            }
             move_snake_body_forward(game_state, next_place)
         }
 
@@ -390,6 +484,12 @@ check_entity_collision :: proc(game_state: ^GameState, next_place: Point) -> (En
         }
     }
 
+    if game_state.effect != nil && !game_state.effect.applied {
+        if game_state.effect.position.x == next_place.x && game_state.effect.position.y == next_place.y {
+            return .SpecialItem, -1
+        }
+    }
+
     return .EmptySpace, 0
 }
 
@@ -420,6 +520,17 @@ move_snake_body_forward :: proc(game_state: ^GameState, next_place: Point) {
 
 @(private)
 get_frames_until_movement :: proc(game_state: ^GameState) -> i32 {
+    if game_state.effect != nil && game_state.effect.applied {
+        // Handles special items that affects movement speed
+        #partial switch game_state.effect.special_item {
+        case .SlowerSnake:
+            return game_speed
+        case .FasterSnake:
+            return game_speed - 24
+        }
+    }
+
+    // Handle speed according to score
     switch len(game_state.snake.body) {
     case 0 ..< 3:
         return game_speed
