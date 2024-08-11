@@ -115,7 +115,7 @@ start_game_gui :: proc(open_new_window: bool = true) {
         frames_until_remove_food = 0,
         food = [dynamic]Point{ },
         score = 0,
-        frames_until_add_special = 120,
+        frames_until_add_special = 1800,
         effect = nil,
     }
 
@@ -232,8 +232,7 @@ handle_special_item :: proc(game_state: ^GameState) {
     }
 
     // Randomize time until next special is generated
-    // game_state.frames_until_add_special = ((rand.int31() % 200) * 8) + 1200
-    game_state.frames_until_add_special = 60
+    game_state.frames_until_add_special = ((rand.int31() % 200) * 8) + 1200
 
     did_add_special := false
 
