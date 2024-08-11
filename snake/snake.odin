@@ -89,10 +89,6 @@ SnakeGameInfo :: struct {
     high_score: i32 `json:"high_score"`,
 }
 
-// todo: add static walls
-// todo: check collistion agains walls
-// todo: implement game-levels?
-
 start_game_gui :: proc(open_new_window: bool = true) {
     // Check and open a window if needed
     if open_new_window {
