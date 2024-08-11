@@ -12,7 +12,7 @@ import "../gui"
 food_score_value :: 1
 
 @(private)
-game_speed :: 30
+game_speed :: 25
 
 @(private)
 grid_size :: 26
